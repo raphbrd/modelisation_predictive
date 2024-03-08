@@ -12,8 +12,6 @@ library(mgcv)
 source('utils/score.R')
 source('utils/utils.R')
 
-setwd("/Users/raphaelbordas/Desktop/Master_2023_24/S2 - Modélisation prédictive/challenge_net_load")
-
 ### Data preprocessing ####
 
 # Data0 are train and validation data
@@ -82,21 +80,21 @@ Data1$confinement2 <- factor(Data1$confinement2)
 Data1$confinement3 <- factor(Data1$confinement3)
 
 # restrict the range of traning data
-Data0 <- Data0[Data0$stringency_index < 80, ]
-sel_a <- which(Data0$Year >= 2018 & Data0$Year <= 2021) # training
-sel_b <- which(Data0$Year > 2021)
+Data0_clean <- Data0[Data0$stringency_index < 80, ]
+sel_a <- which(Data0_clean$Year >= 2018 & Data0_clean$Year <= 2021) # training
+sel_b <- which(Data0_clean$Year > 2021)
 
 # Test data : this is the main target of this challenge
 range(Data1$Date) # from 2022-09-02 to 2023-10-01
 
-train_data <- Data0[sel_a, ]
-val_data <- Data0[sel_b, ]
+train_data <- Data0_clean[sel_a, ]
+val_data <- Data0_clean[sel_b, ]
 test_data <- Data1
 
 # second version of the training set : randomely selecting
 # validation points over the last 2 years of the training data
 set.seed(42)
-tmp <- Data0[Data0$Year >= 2018, ]
+tmp <- Data0_clean[Data0_clean$Year >= 2018, ]
 sel_c <- sample(which(tmp$Year >= 2021), 365, replace = FALSE)
 train_data2 <- tmp[-sel_c, ]
 val_data2 <- tmp[sel_c, ]

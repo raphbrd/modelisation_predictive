@@ -2,7 +2,7 @@
 title: "Projet de Modélisation Prédictive"
 author: "Arthur Reidenbach et Raphael Bordas"
 date: "Mars 2024"
-output: pdf_document
+output: bookdown::pdf_document2
 ---
 
 ```{r setup, include = FALSE}
@@ -28,15 +28,23 @@ knitr::opts_template$set(centered = list(
   fig.align = 'center',
   echo = FALSE
 ))
+
+knitr::opts_template$set(fullwidth = list(
+  fig.width = 12, fig.height = 6,
+  # fig.retina = 2, 
+  out.width = '100%',
+  fig.align = 'center',
+  echo = FALSE
+))
 ```
 
-## Motivation
+# Motivation
 
-Avec la part croissante des énergies renouvelables dans le mix électrique en France, il devient majeur de pouvoir prédire la demande nette de production électrique, c'est-à-dire la charge globale du réseau (`Load` dans le jeu de données) moins les productions renouvelables. Le jeu de données fourni se concentre sur la dernière décennie, avec pour objectif la prédiction de la demande nette lors de la période de sobriété énergétique de septembre 2022 à octobre 2023. 
+Avec la part croissante des énergies renouvelables dans le mix électrique en France, il devient majeur de pouvoir prédire la demande nette de production électrique, c'est-à-dire la charge globale du réseau (`Load` dans le jeu de données) moins les productions renouvelables. L'augmentation de la demande avec les voitures électriques est également un enjeu majeur des futures prédictions de consommation. Nous pouvons donc nous attendre à une rupture dont l'importance n'est pas déterminée, à la fois sur les modalités de production et les habitudes de consommation. C'est dans ce cadre que le jeu de données fourni se propose de prédire la demande nette la demande nette lors de la période de sobriété énergétique de septembre 2022 à octobre 2023, en apprenant sur les données de la dernière décénnie (2013 - 2022).
 
-## Nettoyage des données et analyse exploratoire
+# Nettoyage des données et analyse exploratoire
 
-### Choix des données d'entrainement
+## Choix des données d'entrainement
 
 Puisque nous n'avons pas accès aux données test (en terme de demande nette), nous procédons par validation sur un sous-échantillon du jeu d'entrainement original (`Data0` dans le code). Plusieurs méthodes peuvent être envisagées :
 
@@ -46,33 +54,86 @@ Puisque nous n'avons pas accès aux données test (en terme de demande nette), n
 
 3. Entrainement entre le 01/01/2018 et le 01/09/2022, validation sur 365 points aléatoirement choisis entre le 01/01/2021 et le 01/09/2022 et exclus de l'entrainement.
 
-La motivation pour entrainer les modèles à partir de 2018 (méthode 2 et 3) vient essentiellement des observations suivantes : changement de comportements de certaines séries temporelles (par exemple augmentation de la production éolienne observable sur la Figure 2), de la définition et du calcul de la nébulosité pondéré par la production (`Nebulosity_weighted`) à partir de 2018 (Figure 3). De manière générale, il a été observé de meilleures performances à modèles identiques lorsque l'entrainement commence en 2018. 
+La motivation pour entrainer les modèles à partir de 2018 (méthode 2 et 3) vient essentiellement des observations suivantes : changement de comportements de certaines séries temporelles (par exemple augmentation de la production éolienne observable sur la Figure \@ref(fig:data-evol), panel de gauche), de la définition et du calcul de la nébulosité pondéré par la production (`Nebulosity_weighted`) à partir de 2018 (Figure \@ref(fig:data-evol), panel de droite). De manière générale, il a été observé de meilleures performances à modèles identiques lorsque l'entrainement commence en 2018. 
 
-De plus, il est également intéressant de prendre des points de validation aléatoire, pour éviter une évaluation biaisée de la performance : la méthode 2 n'évalue la performance d'un modèle que sur 3 saisons. Or, ainsi que le montre la Figure 1, la série temporelle d'intérêt présente une saisonnalité annuelle très marquée. Il est donc primodial d'évaluer également le modèle sur octobre-novembre-décembre.
+De plus, il est également intéressant de prendre des points de validation aléatoire, pour éviter une évaluation biaisée de la performance : la méthode 2 n'évalue la performance d'un modèle que sur 3 saisons. Or, ainsi que le montre la Figure \@ref(fig:train-val-data), la série temporelle d'intérêt présente une saisonnalité annuelle très marquée. Il est donc primodial d'évaluer également le modèle sur octobre-novembre-décembre.
 
-Enfin, il a été décidé de prendre en compte la pandémie du Covi-19. Nous avons testé deux méthodes :
+## Données externes
+
+La série temporelle d'intérêt a la particularité de couvrir toute la période de la pandémie du Covid-19 en 2020-2021. Pour cela, nous avons testé deux solutions pour prendre en compte ces déviations par rapport à la tendance usuelle : 
+
+- un codage 'one-hot' des trois confinements: du 17/03/2020 au 11/05/2020, du 30/10/2020 au 12/15/2020 et du 04/03/2021 au 03/05/2021. $1$ dénote alors la présence d'un confinement.
 
 - un index de confinement (*strengency index*^[Hale, T., Angrist, N., Goldszmidt, R. et al. A global panel database of pandemic policies (Oxford COVID-19 Government Response Tracker). Nat Hum Behav 5, 529–538 (2021). https://doi.org/10.1038/s41562-021-01079-8]) pour prendre en compte l'effet de la pandémie du Covid-19 sur la consommation électrique en France. Plus précisement, les périodes avec un index supérieur ou égal à 80 ont été exclu de l'entrainement (correspondant au premier confinement du printemps 2020).
 
-- un codage 'one-hot' des trois confinements.
-
-```{r fig.cap = "Net load of the training and validation datasets", opts.label="centered"}
-par(mfrow=c(1,1))
+```{r train-val-data, fig.cap = "Two versions of the training and validation datasets", opts.label="fullwidth"}
+par(mfrow=c(1, 2))
 plot(train_data$Date, train_data$Net_demand, type='l', xlim=range(train_data$Date, val_data$Date), main = "", xlab = "Date", ylab = "Net demand (MW)")
 lines(val_data$Date, val_data$Load, type='l', col = "blue")
 legend("top", legend = c("Train", "Validation"), col = c("black", "blue"), ncol = 2, lty = 1)
+
+plot(train_data2$Date, train_data2$Net_demand, type='l', xlim=range(train_data$Date, val_data$Date), main = "", xlab = "Date", ylab = "Net demand (MW)")
+points(val_data2$Date, val_data2$Load, pch = 3, col = "blue")
+legend("top", legend = c("Train", "Validation"), col = c("black", "blue"), ncol = 2, lty = 1)
 ```
 
-```{r fig.cap = "Load (blue), wind power (green) and solar power (red)", opts.label="centered"}
+```{r data-evol, fig.cap = "Evolution of some time series before and after 2018 (red line on Jan. 1st 2018)", opts.label="fullwidth"}
 col <- yarrr::piratepal("basel")
-par(mfrow=c(1,1))
+par(mfrow=c(1,2))
 plot(Data0$Date, Data0$Load, type='l', col=col[1], ylim = c(0, 90000), xlab = "Date", ylab = "Load (MW)")
 lines(Data0$Date, Data0$Solar_power, col=col[2])
 lines(Data0$Date, Data0$Wind_power, col=col[3])
+abline(v = Data0$Date[Data0$Date == "2018-01-01"], col = "red", lty = 2)
+
+plot(Data0$Date, Data0$Nebulosity_weighted, pch=3,  col="darkgrey", xlab = "Date", ylab = "Weighted Nebulosity")
+abline(v = Data0$Date[Data0$Date == "2018-01-01"], col = "red", lty = 2)
+```
+
+## Sélection *a priori* de variables
+
+
+
+```{r opts.label="fullwidth"}
+par(mfrow=c(1,2))
+plot(
+  Net_demand ~ Temp,
+  data = rbind(train_data, val_data),
+  pch = 1,
+  cex = .5
+)
+
+plot(
+  Net_demand ~ Temp_s99,
+  data = rbind(train_data, val_data),
+  pch = 1,
+  cex = .5
+)
+```
+
+```{r opts.label="fullwidth"}
+par(mfrow=c(1,2))
+boxplot(Net_demand~WeekDays, data=rbind(train_data, val_data))
+boxplot(Net_demand~WeekDays3, data=rbind(train_data, val_data))
 ```
 
 ```{r}
-
+Data0 %>% filter(Year %in% c(2019, 2020, 2021), Month == 3) %>%
+    ggplot(aes(confinement1, Net_demand, colour = as.factor(Year))) +  
+    geom_boxplot()+ facet_grid() +
+  theme(legend.position = "None") +
+  labs(x = "Lockdown", y = "Net demand") +
+  scale_x_discrete(labels = c("Outside lockdown", "During lockdown"))
 ```
+
+
+# Modélisation
+
+## Modèles linéaires
+
+## GAM
+
+## Aggrégation d'experts
+
+# Conclusion et discussion
 
 
