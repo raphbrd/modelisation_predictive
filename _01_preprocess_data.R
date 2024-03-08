@@ -64,6 +64,23 @@ Data1 <- Data1 %>%
 Data0$stringency_index[is.na(Data0$stringency_index)] <- 0
 Data1$stringency_index[is.na(Data1$stringency_index)] <- 0
 
+# binary variables for lockdowns
+
+Data0 <- mutate(Data0,confinement1 = ifelse(Data0$Date >= as.Date("2020-03-17") & Data0$Date 
+                                            <= as.Date("2020-05-11"),1,0),
+                confinement2 = ifelse(Data0$Date >= as.Date("2020-10-30") & Data0$Date <= as.Date("2020-12-15"),1,0),
+                confinement3 = ifelse(Data0$Date >= as.Date("2021-04-03") & Data0$Date <= as.Date("2021-05-03"),1,0))
+
+Data0$confinement1 <- factor(Data0$confinement1)
+Data0$confinement2 <- factor(Data0$confinement2)
+Data0$confinement3 <- factor(Data0$confinement3)
+
+Data1 <- mutate(Data1, confinement1 = 0, confinement2 = 0, confinement3 = 0)
+
+Data1$confinement1 <- factor(Data1$confinement1)
+Data1$confinement2 <- factor(Data1$confinement2)
+Data1$confinement3 <- factor(Data1$confinement3)
+
 # restrict the range of traning data
 Data0 <- Data0[Data0$stringency_index < 80, ]
 sel_a <- which(Data0$Year >= 2018 & Data0$Year <= 2021) # training
