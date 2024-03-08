@@ -78,10 +78,11 @@ test_data <- Data1
 
 # second version of the training set : randomely selecting
 # validation points over the last 2 years of the training data
+set.seed(42)
 tmp <- Data0[Data0$Year >= 2018, ]
-sel_b <- sample(which(tmp$Year >= 2021), 365, replace = FALSE)
-train_data2 <- tmp[-sel_b, ]
-val_data2 <- tmp[sel_b, ]
+sel_c <- sample(which(tmp$Year >= 2021), 365, replace = FALSE)
+train_data2 <- tmp[-sel_c, ]
+val_data2 <- tmp[sel_c, ]
 
 # cross-validation indexes 
 # train_data and val_data should be merged in that case
