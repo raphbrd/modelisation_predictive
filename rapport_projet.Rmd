@@ -1,0 +1,28 @@
+---
+title: "Projet de Modélisation Prédictive"
+author: "Arthur Reidenbach et Raphael Bordas"
+date: "Mars 2024"
+output: pdf_document
+---
+
+```{r setup, include = FALSE}
+# rm(list = objects())
+# graphics.off()
+library(tidyverse)
+library(lubridate)
+library(quantreg)
+library(mgcv)
+library(readxl)
+library(qgam)
+library(mgcv)
+
+# custom utilities scripts
+source('utils/score.R')
+source('utils/utils.R')
+```
+
+## Motivation
+
+Avec la part croissante des énergies renouvelables dans le mix électrique en France, il devient majeur de pouvoir prédire la demande nette de production électrique, c'est-à-dire la charge globale du réseau (`Load` dans le jeu de données) moins les productions renouvelables. Le jeu de données fourni se concentre sur la dernière décennie, avec pour objectif la prédiction de la demande nette lors de la période de sobriété énergétique de septembre 2022 à octobre 2023. 
+
+## Analyse exploratoire

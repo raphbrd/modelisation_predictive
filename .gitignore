@@ -1,0 +1,8 @@
+*.pdf
+*.html
+*.Rproj
+*.DS_Store
+.RData
+.Rhistory
+data/submission*
+.Rproj.user
