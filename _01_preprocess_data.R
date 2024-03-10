@@ -15,6 +15,7 @@ library(mgcv)
 library(readxl)
 library(qgam)
 library(mgcv)
+library(opera)
 
 # custom utilities scripts
 source('utils/score.R')
