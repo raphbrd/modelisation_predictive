@@ -102,3 +102,21 @@ val_data2 <- tmp[sel_c, ]
 # cross-validation indexes 
 # train_data and val_data should be merged in that case
 block_list <- get_cv_blocks(nrow(train_data) + nrow(val_data), K = 8)
+
+# Add new transformation of the time variable using sinusoidal functions
+
+w<-2*pi/(365)
+Nfourier<-50
+for(i in c(1:Nfourier))
+{
+  assign(paste("cos", i, sep=""),cos(w*Data0$Time*i))
+  assign(paste("sin", i, sep=""),sin(w*Data0$Time*i))
+}
+objects()
+plot(Data0$Date, cos1,type='l')
+
+cos<-paste('cos',c(1:Nfourier),sep="",collapse=",")                         
+sin<-paste('sin',c(1:Nfourier),sep="",collapse=",")
+
+Data0<-eval(parse(text=paste("data.frame(Data0,",cos,",",sin,")",sep="")))
+names(Data0)
