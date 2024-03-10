@@ -4,7 +4,7 @@
 #' @param block The indexes used in the test block of the CV
 #' @param df The dataframe used to fit the model
 #' @returns The prediction on the test block of the CV
-fit.lm <- function(eq, block)
+fit.lm <- function(eq, df, block)
 {
   mod <- lm(eq, data = df[-block, ])
   mod.cvpred <- predict(mod, newdata = df[block, ])

@@ -6,7 +6,7 @@ Authors: Arthur Reidenbach et Raphael Bordas
 
 ## Dataset
 
-The main dataset contains the French electricity load between 2013 and 2023 in MW, along various independant variables (weather, lagged production, etc...).
+The main dataset contains the French electricity load between 2013 and 2023 in MW (on a daily basis), along various independant variables (weather, lagged production, etc...).
 
 The true net load is known from 2013 until Sept. 1st, 2022. Thus, the test set ranges between Sept. 2nd 2022 and Oct. 1st 2023. All predictions were submitted to a private Kaggle competition.
 

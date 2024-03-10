@@ -1,3 +1,11 @@
+#' First part of the scripts : preprocess the data and output 3 sets of datasets
+#' - Data0 and Data1 : original training and test datasets from Kaggle
+#' - train_data, val_data, test_data
+#' - train_data2, val_data2, test_data
+#' 
+#' This should be run before the other scripts in order to have the correct
+#' setup
+#' 
 rm(list = objects())
 graphics.off()
 library(tidyverse)
@@ -38,6 +46,11 @@ transforms <- function(df) {
         'WorkDay' = 'Thursday',
         'WorkDay' = 'Tuesday',
         'WorkDay' = 'Wednesday'
+      ),
+      # reodering WeekDays for plotting purposes
+      WeekDays3 = factor(
+        WeekDays3 ,
+        levels = c("Monday", "WorkDay", "Friday", "Saturday", "Sunday")
       )
     )
   )
@@ -63,9 +76,8 @@ Data0$stringency_index[is.na(Data0$stringency_index)] <- 0
 Data1$stringency_index[is.na(Data1$stringency_index)] <- 0
 
 # binary variables for lockdowns
-
-Data0 <- mutate(Data0,confinement1 = ifelse(Data0$Date >= as.Date("2020-03-17") & Data0$Date 
-                                            <= as.Date("2020-05-11"),1,0),
+Data0 <- mutate(Data0,
+                confinement1 = ifelse(Data0$Date >= as.Date("2020-03-17") & Data0$Date <= as.Date("2020-05-11"),1,0),
                 confinement2 = ifelse(Data0$Date >= as.Date("2020-10-30") & Data0$Date <= as.Date("2020-12-15"),1,0),
                 confinement3 = ifelse(Data0$Date >= as.Date("2021-04-03") & Data0$Date <= as.Date("2021-05-03"),1,0))
 
@@ -87,11 +99,12 @@ sel_b <- which(Data0_clean$Year > 2021)
 # Test data : this is the main target of this challenge
 range(Data1$Date) # from 2022-09-02 to 2023-10-01
 
+# first version of the training set 
 train_data <- Data0_clean[sel_a, ]
 val_data <- Data0_clean[sel_b, ]
 test_data <- Data1
 
-# second version of the training set : randomely selecting
+# second version of the training set : randomly selecting
 # validation points over the last 2 years of the training data
 set.seed(42)
 tmp <- Data0_clean[Data0_clean$Year >= 2018, ]

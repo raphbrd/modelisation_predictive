@@ -19,6 +19,7 @@ library(qgam)
 library(mgcv)
 library(ggpubr)
 library(forecast)
+library(cetcolor)
 
 # custom utilities scripts
 source('utils/score.R')
@@ -45,7 +46,6 @@ knitr::opts_template$set(fullwidth = list(
 
 Code lié à ce projet disponible sur ce [dépôt GitHub](https://github.com/raphbrd/modelisation_predictive).
 
-
 # Motivation
 
 Avec la part croissante des énergies renouvelables dans le mix électrique en France, il devient majeur de pouvoir prédire la demande nette de production électrique, c'est-à-dire la charge globale du réseau (`Load` dans le jeu de données) moins les productions renouvelables (`Solar_power` et `Wind_power`). L'augmentation de la demande brute avec les voitures électriques est également un enjeu majeur des futures prédictions de consommation, dont les caractéristiques majeurs vont ainsi être amenées à changer. Une rupture, dont l'importance est encore inconnue, est à prévoir à la fois sur les modalités de production et les habitudes de consommation. C'est dans ce cadre que le jeu de données fourni se propose de prédire la demande nette lors de la période de sobriété énergétique de septembre 2022 à octobre 2023, en apprenant sur les données de la dernière décénnie (2013 - 2022).
@@ -62,28 +62,7 @@ Les données test ne comportant pas la demande nette, nous procédons par valida
 
 3. Entraînement entre le 01/01/2018 et le 01/09/2022, validation sur 365 points aléatoirement choisis entre le 01/01/2021 et le 01/09/2022 et exclus de l'entraînement
 
-La motivation pour entrainer les modèles à partir de 2018 (méthodes 2 et 3) vient essentiellement des observations suivantes : le changement de comportement de certaines séries temporelles (par exemple augmentation de la production éolienne observable sur la Figure \@ref(fig:data-evol), panel de gauche), de la définition et du calcul de la nébulosité pondéré par la production (`Nebulosity_weighted`) à partir de 2018 (Figure \@ref(fig:data-evol), panel de droite). De manière générale, il a été observé de meilleures performances à modèles identiques lorsque l'entraînement commence en 2018. 
-
-De plus, il est également intéressant de prendre des points de validation aléatoire, pour éviter une évaluation biaisée de la performance : la méthode 2 n'évalue la performance d'un modèle que sur 3 saisons. Or, ainsi que le montre la Figure \@ref(fig:train-val-data), la série temporelle d'intérêt présente une saisonnalité annuelle très marquée. Il est donc primodial d'évaluer également le modèle sur octobre-novembre-décembre.
-
-## Données externes
-
-La série temporelle d'intérêt a la particularité de couvrir toute la période de la pandémie du Covid-19 en 2020-2021. En effet, d'un point de vue descriptif, il est observé une baisse drastique et anormale de la consommation (Figure \@ref(fig:covid-impact)). Deux solutions ont alors été testé pour prendre en compte ces déviations par rapport à la tendance avant et après le Covid :
-
-- un codage 'one-hot' des trois confinements: du 17/03/2020 au 11/05/2020, du 30/10/2020 au 12/15/2020 et du 04/03/2021 au 03/05/2021. $1$ dénote alors la présence d'un confinement, $0$ son absence.
-
-- un indice de confinement (*strengency index*^[Hale, T., Angrist, N., Goldszmidt, R. et al. A global panel database of pandemic policies (Oxford COVID-19 Government Response Tracker). Nat Hum Behav 5, 529–538 (2021). https://doi.org/10.1038/s41562-021-01079-8]) pour prendre en compte l'effet de la pandémie du Covid-19 sur la consommation électrique en France. Dans ce cadre, nous avons testé l'incorporation de cet indice comme covariable mais aussi l'exclusion de l'entrainement des périodes avec un indice supérieur à 80 (correspondant au premier confinement du printemps 2020).
-
-```{r train-val-data, fig.cap = "Two versions of the training and validation datasets", opts.label="fullwidth"}
-par(mfrow=c(1, 2))
-plot(train_data$Date, train_data$Net_demand, type='l', xlim=range(train_data$Date, val_data$Date), main = "", xlab = "Date", ylab = "Net demand (MW)")
-lines(val_data$Date, val_data$Load, type='l', col = "blue")
-legend("top", legend = c("Train", "Validation"), col = c("black", "blue"), ncol = 2, lty = 1)
-
-plot(train_data2$Date, train_data2$Net_demand, type='l', xlim=range(train_data$Date, val_data$Date), main = "", xlab = "Date", ylab = "Net demand (MW)")
-points(val_data2$Date, val_data2$Load, pch = 3, col = "blue")
-legend("top", legend = c("Train", "Validation"), col = c("black", "blue"), ncol = 2, lty = 1)
-```
+La motivation pour entraîner les modèles à partir de 2018 (méthodes 2 et 3) vient essentiellement des observations suivantes : le changement de comportement de certaines séries temporelles (par exemple augmentation de la production éolienne observable sur la Figure \@ref(fig:data-evol), panel de gauche), de la définition et du calcul de la nébulosité pondéré par la production (`Nebulosity_weighted`) à partir de 2018 (Figure \@ref(fig:data-evol), panel de droite). De manière générale, il a été observé de meilleures performances à modèles identiques lorsque l'entraînement commence en 2018. 
 
 ```{r data-evol, fig.cap = "Evolution of some time series before and after 2018 (red line on Jan. 1st 2018)", opts.label="fullwidth"}
 col <- yarrr::piratepal("basel")
@@ -96,6 +75,27 @@ abline(v = Data0$Date[Data0$Date == "2018-01-01"], col = "red", lty = 2)
 plot(Data0$Date, Data0$Nebulosity_weighted, pch=3,  col="darkgrey", xlab = "Date", ylab = "Weighted Nebulosity")
 abline(v = Data0$Date[Data0$Date == "2018-01-01"], col = "red", lty = 2)
 ```
+
+De plus, il est également intéressant de prendre des points de validation aléatoire, pour éviter une évaluation biaisée de la performance : la méthode 2 n'évalue la performance d'un modèle que sur 3 saisons. Or, ainsi que le montre la Figure \@ref(fig:train-val-data), la série temporelle d'intérêt présente une saisonnalité annuelle très marquée. Il est donc primodial d'évaluer également le modèle sur octobre-novembre-décembre.
+
+```{r train-val-data, fig.cap = "Two versions of the training and validation datasets", opts.label="fullwidth"}
+par(mfrow=c(1, 2))
+plot(train_data$Date, train_data$Net_demand, type='l', xlim=range(train_data$Date, val_data$Date), main = "", xlab = "Date", ylab = "Net demand (MW)")
+lines(val_data$Date, val_data$Load, type='l', col = "blue")
+legend("top", legend = c("Train", "Validation"), col = c("black", "blue"), ncol = 2, lty = 1)
+
+plot(train_data2$Date, train_data2$Net_demand, type='l', xlim=range(train_data$Date, val_data$Date), main = "", xlab = "Date", ylab = "Net demand (MW)")
+points(val_data2$Date, val_data2$Load, pch = 3, col = "blue")
+legend("top", legend = c("Train", "Validation"), col = c("black", "blue"), ncol = 2, lty = 1)
+```
+
+## Données externes
+
+La série temporelle d'intérêt a la particularité de couvrir toute la période de la pandémie du Covid-19 en 2020-2021. En effet, d'un point de vue descriptif, il est observé une baisse drastique et anormale de la consommation (Figure \@ref(fig:covid-impact)). Deux solutions ont alors été testé pour prendre en compte ces déviations par rapport à la tendance avant et après le Covid :
+
+- un codage 'one-hot' des trois confinements: du 17/03/2020 au 11/05/2020, du 30/10/2020 au 12/15/2020 et du 04/03/2021 au 03/05/2021. $1$ dénote alors la présence d'un confinement, $0$ son absence.
+
+- un indice de confinement (*strengency index*^[Hale, T., Angrist, N., Goldszmidt, R. et al. A global panel database of pandemic policies (Oxford COVID-19 Government Response Tracker). Nat Hum Behav 5, 529–538 (2021). https://doi.org/10.1038/s41562-021-01079-8]) pour prendre en compte l'effet de la pandémie du Covid-19 sur la consommation électrique en France. Dans ce cadre, nous avons testé l'incorporation de cet indice comme covariable mais aussi l'exclusion de l'entrainement des périodes avec un indice supérieur à 80 (correspondant au premier confinement du printemps 2020).
 
 ```{r covid-impact, opts.label="centered", fig.cap="Impact of Covid over the net demand. Comparing time series between March 17th and May 11th of each year."}
 Data0 %>% filter(Year %in% c(2018, 2019, 2020, 2021),
@@ -112,63 +112,9 @@ Data0 %>% filter(Year %in% c(2018, 2019, 2020, 2021),
 
 ## Sélection *a priori* de variables
 
+La Figure \@ref(fig:var-selection1) résume l'analyse exploratoire de quelques variables clés pour la prédiction de la demande nette : la charge du réseau du jour précédent (`Load.1`) semble très fortement corrélée, mais aussi dépendante du jour de la semaine (`WeekDays3`). La température (panel droit) semble avoir plutôt une relation polynomiale à la demande nette, selon le jour de l'année (`toy`). 
 
-
-```{r var_selection1, opts.label="fullwidth"}
-par(mfrow=c(2,3))
-
-plot(
-  Net_demand ~ Load.1,
-  data = rbind(train_data, val_data),
-  pch = 1,
-  cex = .5
-)
-
-plot(
-  Net_demand ~ Load.7,
-  data = rbind(train_data, val_data),
-  pch = 1,
-  cex = .5
-)
-
-# Plots on TEMP
-plot(
-  Net_demand ~ Temp,
-  data = rbind(train_data, val_data),
-  pch = 1,
-  cex = .5
-)
-
-plot(
-  Net_demand ~ Temp_s99,
-  data = rbind(train_data, val_data),
-  pch = 1,
-  cex = .5
-)
-
-boxplot(Net_demand ~ WeekDays, data = rbind(train_data, val_data))
-boxplot(Net_demand ~ WeekDays3, data = rbind(train_data, val_data))
-
-
-```
-
-
-
-```{r var_selection2, opts.label="fullwidth"}
-par(mfrow=c(3, 2))
-
-acf(Data0_clean$Net_demand)
-
-plot(
-  Net_demand ~ Load.1,
-  data = rbind(train_data, val_data),
-  pch = 1,
-  cex = .5
-)
-
-nacf <- acf(Data0_clean$Net_demand, plot = FALSE)
-nacf.df <- with(nacf, data.frame(lag, acf))
-
+```{r var-selection1, opts.label="fullwidth", fig.cap="Relation between the net demand and some well selected variables. WeekDays3 denotes the grouping of Tues, Wed and Thur as WorkDay. In Day of the Year, 0 is Jan 1st, 365 Dec 31st."}
 ggarrange(
  rbind(train_data, val_data) %>% 
     ggplot(aes(Load.1, Net_demand, colour = WeekDays3)) +
@@ -176,30 +122,96 @@ ggarrange(
    theme_classic() +
   theme(legend.position = "bottom") +
   labs(x = "Load lag 1 (MW)", y = "Net demand (MW)", colour = "WeekDays3"),
+rbind(train_data, val_data) %>% 
+    ggplot(aes(Temp, Net_demand, colour = round(toy * 365))) +
+    geom_point() +
+    scale_color_gradientn(colours = cet_pal(250, "c4s"), n.breaks = 5) +
+    theme_classic() +
+    theme(legend.position = "bottom") +
+    labs(x = "Daily temperature (K)", y = "Net demand (MW)", colour = "Day of the year"),
+# rbind(train_data, val_data) %>% 
+#   ggplot(aes(WeekDays3, Net_demand)) +
+#   geom_boxplot() +
+#   theme_classic() +
+#   theme(legend.position = "bottom") +
+#   labs(x = "Day of the week", y = "Net demand (MW)"),
+ncol = 2
+)
+```
+
+```{r var-selection2, opts.label="centered"}
+nacf <- acf(Data0_clean$Net_demand, plot = FALSE)
+nacf.df <- with(nacf, data.frame(lag, acf))
 ggAcf(Data0_clean$Net_demand, lag.max = 35) +
     labs(x = "Lag (day)", y = "ACF", title = "") +
     theme_classic()
-)
-
 ```
-
 
 # Modélisation
 
 ## Modèles linéaires
 
-Pour vérifier l'importance des variables a priori sélectionnées, nous avons commencé par des modèles linéaires simples, multiples et quantiles.
+Pour vérifier l'importance des variables a priori sélectionnées, nous avons commencé par des modèles linéaires simples, multiples et quantiles. Notre stratégie est alors la suivante : 
+
+1. Apprendre le modèle sur le jeu d'entrainement (`train_data` ou `train_data2` selon la méthode 2 ou 3 respectivement, voir section sur [Choix des données d'entrainement])
+
+2. Calculer l'erreur test (RMSE) sur le jeu de validation
+
+3. Ajouter le quantile 0.95 des résidus aux prédictions
+
+4. Calculer la pinball loss sur le jeu de validation
+
+Si le modèle est performant :
+
+4. Validation croisée 8-plis sur la concaténation entrainement-validation pour prédire `Data1`
+
+5. Répéter 3 et 4 sur les prédictions de la validation croisée
+
+6. Ajouter le quantile 0.95 sur les résidus du modèle test
+
+7. Soumission Kaggle
 
 ### Importance du jour de la semaine et de la température
+
+Les modèles suivants ont été évalué dans une première approche : 
+
+```{r linear-reg, eval = FALSE}
+mod.lm <- lm(Net_demand ~ WeekDays + Temp, data = train_data)
+```
 
 ### Prendre en compte la saisonnalité
 
 Notre première tentative pour prendre en compte la saisonnalité des données, à la fois mensuelle et hebdomadaire, a reposé sur une analyse de Fourier. 
 
+### Régression quantile
+
+Dans ce data challenge, nous nous intéressons à la prédiction du quantile 0.95, il est donc intéressant de comparer la performance entre les modèles précédents et une prédiction plus directe des quantiles.
+
+```{r quantile-reg, eval = FALSE}
+mod.rq <- rq(Net_demand ~ WeekDays + Temp + stringency_index,
+              data = train_data,
+              tau = 0.95)
+```
+
+### Résultats des modèles linéaires
+
+Les performances des modèles sont résumées dans le tableau ci-dessous:
+
+```{r linear-table, echo=FALSE}
+lm_results <- data.frame(
+  Model = c("Linear", "Cyclic", "Quantile"),
+  RMSE_Validation = c("5238", NA, NA),
+  Pinball_loss = c("537", NA, NA)
+)
+knitr::kable(lm_results, caption = "Results of the linear models", col.names = c("Model", "RMSE (Validation)", "Pinball loss (Validation)"), align = c("l", "r", "r"))
+```
+
 ## GAM
+
+### Modèle de départ
+
+Pour commencer la modélisation avec les GAM, nous sommes partis à la fois d'une sélection de variables a priori, des variables significatives des modèles linéaires et des variables prédisant la `Load` dans les TP du cours.
 
 ## Aggrégation d'experts
 
 # Conclusion et discussion
-
-
