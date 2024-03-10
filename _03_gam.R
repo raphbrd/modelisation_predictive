@@ -94,6 +94,12 @@ pinball_loss(
   output.vect = FALSE
 ) # 442 without the VC
 
+# code for the residual figure in the report
+md.gam.11 <- gam(equation, data = train_data2)
+md.gam.11.forecast <- predict(md.gam.11, newdata = val_data2)
+res <- val_data2$Net_demand - md.gam.11.forecast
+write.csv(data.frame(res = res), "data/example_residual_gam.csv")
+
 # soumission
 md.gam.11 <- gam(equation, data = Data0_clean)
 gam.forecast <- predict(md.gam.11, newdata = Data1)
@@ -395,5 +401,63 @@ write.table(
   dec = '.',
   row.names = F
 )
+
+
+# Testing auto-regressive models
+
+equation1 <- Net_demand ~ s(Time, k = 3, bs = 'cr') +
+  s(toy, k = 30, bs = 'cc') +
+  s(Temp, k = 10, bs = 'cr') +
+  s(Load.1, bs = 'cr', by = WeekDays3) +
+  s(Load.7, bs = 'cr')  +
+  s(Net_demand.1, bs = 'cr', by = WeekDays3) +
+  s(Temp_s99, k = 5, bs = 'cr') +
+  as.factor(BH) +
+  WeekDays3 +
+  te(as.numeric(Date), Wind_weighted, k = c(4, 10)) +
+  te(as.numeric(Date), Nebulosity_weighted, k = c(4, 10)) +
+  s(Wind_power.1, k = 10, bs = 'cr') 
+gam.fit <- gam(equation1, data = train_data2)
+gam.forecast <- predict(gam.fit, newdata = val_data2)
+blockRes.arima <- function(equation, block)
+{
+  g <- gam(as.formula(equation), data = train_data2[-block, ])
+  forecast <- predict(g, newdata = train_data2[block, ])
+  return(train_data2[block, ]$Net_demand - forecast)
+}
+block_list <- get_cv_blocks(nrow(train_data2), K = 5)
+Block_residuals = lapply(block_list, blockRes.arima, equation = equation1) %>% unlist
+Block_residuals.ts <- ts(Block_residuals, frequency=7)
+fit.arima.res <- auto.arima(
+  Block_residuals.ts,
+  max.p = 3,
+  max.q = 4,
+  max.P = 2,
+  max.Q = 2,
+  trace = T,
+  ic = "aic",
+  method = "CSS"
+)
+ts_res_forecast <- ts(c(Block_residuals.ts, val_data2$Net_demand - gam.forecast),  frequency = 7)
+refit <- Arima(ts_res_forecast, model = fit.arima.res)
+prevARIMA.res <- tail(refit$fitted, nrow(val_data2))
+quant <- qnorm(0.95, mean(prevARIMA.res), sd(prevARIMA.res))
+gam.arima.forecast <- gam.forecast + quant # prevARIMA.res
+
+pinball_loss(
+  y = val_data2$Net_demand,
+  gam.arima.forecast,
+  quant = 0.95,
+  output.vect = FALSE
+) # 204
+
+quant <- qnorm(0.95, mean = mean(Block_residuals), sd = sd(Block_residuals))
+pinball_loss(
+  y = val_data2$Net_demand,
+  gam.forecast + quant,
+  quant = 0.95,
+  output.vect = FALSE
+) # 146
+
 
 

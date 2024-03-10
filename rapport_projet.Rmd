@@ -323,17 +323,19 @@ equation <- Net_demand ~ s(Time, k = 3, bs = 'cr') +
   s(Wind_power.1, k = 10, bs = 'cr') +
   s(Solar_power.1, k = 10,  bs = 'cr')
 # md.gam.11 <- gam(equation, data = Data0[sel_a,])
-md.gam.11 <- gam(equation, data = train_data2)
-md.gam.11.forecast <- predict(md.gam.11, newdata = val_data2)
-res <- val_data2$Net_demand - md.gam.11.forecast
+# md.gam.11 <- gam(equation, data = train_data2)
+# md.gam.11.forecast <- predict(md.gam.11, newdata = val_data2)
+# res <- val_data2$Net_demand - md.gam.11.forecast
+# take the data from a csv file to save compilation time:
+res = read.csv("data/example_residual_gam.csv")
 
 ggarrange(
   # Q-Q plot of the residuals
-ggplot(data.frame(res = res), aes(sample = res)) +
+ggplot(res, aes(sample = res)) +
   stat_qq() +
   stat_qq_line(),
 # Histogram of the residuals
-ggplot(data.frame(res = res), aes(x = res)) + 
+ggplot(res, aes(x = res)) + 
   geom_histogram(binwidth = 200) +
   labs(x = "Residual"),
 ncol = 2
@@ -389,7 +391,7 @@ knitr::kable(gam_results, caption = "Results of some representative GAM models. 
 ```
 
 Pour conclure sur cette section, nous rapportons ici le meilleur modèle GAM obtenu lors du data challenge (score de 122 sur le jeu de données privé sur Kaggle) :
-```{r}
+```{r echo=FALSE}
 equation <- Net_demand ~ s(Time, k = 3, bs = 'cr') +
   s(toy, k = 30, bs = 'cc') +
   s(Temp, k = 10, bs = 'cr') +
@@ -406,6 +408,53 @@ equation <- Net_demand ~ s(Time, k = 3, bs = 'cr') +
 
 ## Aggrégation d'experts
 
-Notre dernière démarche, à la suite de ce travail sur les GAM, a été de chercher à agréger les prédictions de divers experts : GAM, modèles quantiles et boosting.
+Notre dernière démarche, à la suite de ce travail sur les GAM, a été de chercher à agréger les prédictions de divers experts : GAM et boosting. Ainsi que discuté plus haut, des GAM aux équations légèrement différentes peuvent donner des performances similaires. La question est alors de savoir si une agrégation de GAM, couplée à des modèles de régression boosté (package `gbm`) peuvent encore accroître ces performances.
+
+Notre première agrégation reprenait donc des GAM étudié en amont (notamment pour le comportement des résidus) et un modèle boosté comme suit :
+```{r eval = FALSE}
+gbm1 <- gbm(
+  equation,
+  distribution = "gaussian" ,
+  data = Data0[sel_a,],
+  n.trees = Ntree,
+  interaction.depth = 10,
+  n.minobsinnode = 5,
+  shrinkage = 0.02,
+  bag.fraction = 0.5,
+  train.fraction = 1,
+  keep.data = FALSE,
+  n.cores = 8
+)
+```
+Le package `opera`a ensuite été utilisé pour agréger les prédictions selon une fonction de perte MSE et une combinaison convexe : 
+```{r eval=FALSE}
+opera::oracle(Data0$Net_demand[sel_b],
+              experts,
+              model = "convex",
+              loss.type = "square")
+```
+```
+Call:
+oracle.default(Y = Data0$Net_demand[sel_b], experts = experts, 
+    model = "convex", loss.type = "square")
+
+Coefficients:
+   gbm gam1  gam2     gam3
+ 0.193 0.24 0.567 4.95e-21
+
+                      rmse   mape
+Best expert oracle:   1320 0.0208
+Uniform combination:  1270 0.0203
+Best convex oracle:   1230 0.0201
+```
+A partir de ces résultats, il peut être judicieux de ne choisir que les gam, qui regroupent plus de 80% du poids des prédictions. En agrégation ainsi `gam1` et `gam2` nous obtenons notre deuxième meilleure prédiction sur le jeu de données privé de Kaggle (score de 132).
 
 # Discussion
+
+A partir d'une sélection restrainte de variables météorologiques (température, vent, nébulosité), temporelles (dates) et de production en décalage (notamment la veille), nous avons cherché à prédire la demande nette d'électricité en France, de manière journalière. De tous les modèles testés, les GAM se sont révélés les plus performants, se généralisant bien sur le jeu de données privé Kaggle. Si le choix des variables explicatives est déterminant, il ne faut pas négliger la sélection des données d'entrainement et une refléxion sur la gestion des résidus et leur distribution. Ces deux derniers éléments, une fois les bonnes variables identifiées, semblent en effet être la clé pour améliorer la performance des prédictions journalières.
+
+En ce qui concerne les perspectives de ce projet de modéliser, il serait intéresser d'étudier d'autres distributions que la distribution normale. En effet, tous les modèles testés reposaient sur l'hypothèse gaussienne. En ayant en tête la queue de distribution des résidus plus ou moins longue selon les modèles, une distribution gamme peut par exemple être pertinente.
+
+Enfin, les processus auto-regressif^[une première tentative est décrite à la fin du script `_03_gam.R` mais n'a pas été suffisament concluante pour être reportée ici ou faire l'object d'une soumission Kaggle (en terme de qualité prédictive par rapport aux meilleurs gam sans autorégression : pinball loss de 204 contre 146 respectivement, sur le jeu de données `val_data2`).] pourrait être un deuxième élement d'amélioration des prévisions de la demande nette, toujours dans cette perspective de mieux prendre en compte les spécificités de la distribution des résidus des modèles GAM. 
+
+

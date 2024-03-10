@@ -16,6 +16,8 @@ library(readxl)
 library(qgam)
 library(mgcv)
 library(opera)
+library(gbm)
+library(forecast)
 
 # custom utilities scripts
 source('utils/score.R')
