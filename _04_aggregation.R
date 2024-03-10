@@ -115,7 +115,7 @@ experts = cbind(md.gam.1.data1.forecast,md.gam.3.data1.forecast)
 
 agreg_gam1_gam3 = predict(or,newexpert = experts)
 
-
+# This model generalize well and gives us good score on both public and private Kaggle's datasets
 
 
 
