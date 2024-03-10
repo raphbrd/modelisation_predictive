@@ -133,3 +133,7 @@ sin<-paste('sin',c(1:Nfourier),sep="",collapse=",")
 
 Data0<-eval(parse(text=paste("data.frame(Data0,",cos,",",sin,")",sep="")))
 names(Data0)
+
+# Add truncated pols : 
+Data0$Temp_trunc1 <- pmax(Data0$Temp-280,0)
+Data0$Temp_trunc2 <- pmax(Data0$Temp-290,0)

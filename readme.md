@@ -14,7 +14,8 @@ The true net load is known from 2013 until Sept. 1st, 2022. Thus, the test set r
 
 This repository is organised as follow : 
 - a set of ordered scripts preprocess data and run the models (mainly GAM, random forests and ensemble methods). The scripts are meant to be run in the correct order, as some depencies and variables are set in previous files.
-- some utility script are located in the corresponding folder. 
+- some utility script are located in the corresponding folder.
+- the code used for the exploratory analysis is mainly located in the R Markdown report.
 
 ## Forecasting
 
