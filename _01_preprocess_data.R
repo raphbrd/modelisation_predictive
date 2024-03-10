@@ -40,6 +40,7 @@ transforms <- function(df) {
   return(
     df %>% mutate(
       Time = as.numeric(Date),
+      BH = as.factor(BH),
       WeekDays = as.factor(WeekDays),
       WeekDays2 = weekdays(Date),
       WeekDays3 = forcats::fct_recode(
@@ -126,7 +127,6 @@ for(i in c(1:Nfourier))
   assign(paste("cos", i, sep=""),cos(w*Data0$Time*i))
   assign(paste("sin", i, sep=""),sin(w*Data0$Time*i))
 }
-objects()
 plot(Data0$Date, cos1,type='l')
 
 cos<-paste('cos',c(1:Nfourier),sep="",collapse=",")                         
@@ -138,3 +138,4 @@ names(Data0)
 # Add truncated pols : 
 Data0$Temp_trunc1 <- pmax(Data0$Temp-280,0)
 Data0$Temp_trunc2 <- pmax(Data0$Temp-290,0)
+

@@ -303,7 +303,25 @@ knitr::kable(int_gam_res, caption = "Comparing GAM models with and without inter
 
 De la même façon que pour les modèles linéaires, le quantile 0.95 des résidus du modèle est ajouté à la prédiction. Pour autant, certains modèles (dont celui de la sous-section suivante) ont des scores plus faibles sur le jeu de données privé du Kaggle sans cette correction.
 
-Dans cet esprit, nous avons donc également testé une modélisation directe du quantile 0.95 à l'aide de modèle GAM-quantile. 
+Ensuite, au lieu de modéliser le quantile $0.95$ par :
+```{r eval = FALSE}
+m <- mean(gam$residuals),
+s <- sd(gam$residuals)
+quant <- qnorm(0.95, mean = m, sd = s)
+```
+nous avons également utilisé une regréssion quantile linéaire sur les résidus :
+```{r eval = FALSE}
+mod.rq <- rq(
+  residuals ~ Date + toy + Temp +
+    BH + Load.1 + Load.7 + Temp_s99 +
+    WeekDays + Wind_weighted + Nebulosity_weighted +
+    Date + Wind_power.1 + Solar_power.1,
+  data = quantile_data,
+  tau = 0.95
+)
+quantnew <- predict(mod.rq, newdata = quantile_newdata)
+```
+Cependant, avec l'inclusion de certaines variables, la matrice de design peut devenir singulière. Dans cet esprit, nous avons donc également testé une modélisation directe du quantile 0.95 à l'aide de modèle GAM-quantile. 
 
 ### Résultats des GAM
 
@@ -322,7 +340,6 @@ equation <- Net_demand ~ s(Time, k = 3, bs = 'cr') +
   te(as.numeric(Date), Nebulosity_weighted, k = c(4, 10)) +
   s(Wind_power.1, k = 10, bs = 'cr')
 ```
-
 
 ## Aggrégation d'experts
 
