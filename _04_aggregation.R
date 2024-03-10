@@ -2,6 +2,11 @@
 #' Agregation of a boosting model and three gam models
 
 #1st expert
+equation <- Net_demand~  Time + toy + Temp + Net_demand.1 + Net_demand.7 + Temp_s99 + as.factor(WeekDays3) + 
+            Wind_power.1 + Solar_power.1 + Wind_power.7 + Solar_power.7 + Wind_weighted + Nebulosity_weighted + 
+            confinement1 + confinement2 + confinement3
+
+Ntree <- 1000
 gbm1 <- gbm(equation,distribution = "gaussian" , data = Data0[sel_a,],n.trees = Ntree, interaction.depth = 10,
             n.minobsinnode = 5, shrinkage = 0.02, bag.fraction = 0.5, train.fraction = 1,
             keep.data = FALSE, n.cores = 8)
