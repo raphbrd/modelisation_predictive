@@ -2,6 +2,8 @@
 
 This is a project made during the first year of the [Mathematics and AI Master at Paris-Saclay University](https://www.universite-paris-saclay.fr/en/education/master/mathematics-and-applications/m1-mathematiques-et-intelligence-artificielle). 
 
+Authors: Arthur Reidenbach et Raphael Bordas
+
 ## Dataset
 
 The main dataset contains the French electricity load between 2013 and 2023 in MW, along various independant variables (weather, lagged production, etc...).
