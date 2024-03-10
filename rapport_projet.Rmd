@@ -47,7 +47,7 @@ Code lié à ce projet disponible sur ce [dépôt GitHub](https://github.com/rap
 
 # Motivation
 
-Avec la part croissante des énergies renouvelables dans le mix électrique en France, il est indispensable de pouvoir prédire la demande nette de production électrique, c'est-à-dire la charge globale du réseau (`Load` dans le jeu de données) moins les productions renouvelables (`Solar_power` et `Wind_power`). L'augmentation de la demande brute avec les voitures électriques est également un enjeu majeur des futures prédictions de consommation, dont les caractéristiques majeurs vont ainsi être amenées à changer. Une rupture, dont l'importance est encore inconnue, est à prévoir à la fois sur les modalités de production et les habitudes de consommation. C'est dans ce cadre que le jeu de données fourni se propose de prédire la demande nette lors de la période de sobriété énergétique de septembre 2022 à octobre 2023, en apprenant sur les données de la dernière décennie (2013 - 2022).
+Avec la part croissante des énergies renouvelables dans le mix électrique en France, il est indispensable de pouvoir prédire la demande nette de production électrique, c'est-à-dire la charge globale du réseau (`Load` dans le jeu de données) moins les productions renouvelables (`Solar_power` et `Wind_power`). L'augmentation de la demande brute avec les voitures électriques est également un enjeu majeur des futures prédictions de consommation, dont les caractéristiques majeurs vont ainsi être amenées à changer. Une rupture, dont l'importance est encore inconnue, est ainsi à prévoir à la fois sur les modalités de production et les habitudes de consommation. C'est dans ce cadre que le jeu de données fourni se propose de prédire la demande nette lors de la période de sobriété énergétique de septembre 2022 à octobre 2023, en apprenant sur les données de la dernière décennie (2013 - 2022).
 
 # Nettoyage des données et analyse exploratoire
 
@@ -61,7 +61,7 @@ Les données test ne comportant pas la demande nette, nous procédons par valida
 
 3.  Entraînement entre le 01/01/2018 et le 01/09/2022, validation sur 365 points aléatoirement choisis entre le 01/01/2021 et le 01/09/2022 et exclus de l'entraînement
 
-La motivation pour entraîner les modèles à partir de 2018 (méthodes 2 et 3) vient essentiellement du changement de comportement de certaines séries temporelles : augmentation de la production éolienne observable sur la Figure \@ref(fig:data-evol) (panel de gauche), redéfinition et du calcul de la nébulosité pondéré par la production (`Nebulosity_weighted`) à partir de 2018 (Figure \@ref(fig:data-evol), panel de droite). De manière générale, il a été observé de meilleures performances à modèles identiques lorsque l'entraînement commence en 2018.
+La motivation pour entraîner les modèles à partir de 2018 (méthodes 2 et 3) vient essentiellement du changement de comportement de certaines séries temporelles : augmentation de la production éolienne observable sur la Figure \@ref(fig:data-evol) (panel de gauche), redéfinition du calcul de la nébulosité pondérée par la production (`Nebulosity_weighted`) à partir de 2018 (Figure \@ref(fig:data-evol), panel de droite). De manière générale, il a été observé de meilleures performances à modèles identiques lorsque l'entraînement commence en 2018.
 
 ```{r data-evol, fig.cap = "Evolution of some time series before and after 2018 (red line on Jan. 1st 2018)", opts.label="fullwidth"}
 col <- yarrr::piratepal("basel")
@@ -113,7 +113,7 @@ Data0 %>% filter(Year %in% c(2018, 2019, 2020, 2021),
 
 ## Sélection *a priori* de variables
 
-La Figure \@ref(fig:var-selection1) résume l'analyse exploratoire de quelques variables clés pour la prédiction de la demande nette : la charge du réseau du jour précédent (`Load.1`) semble être très fortement corrélée à la demande, mais être aussi dépendante du jour de la semaine (`WeekDays3`). La température (panel droit) semble avoir plutôt une relation polynomiale à la demande nette, selon le jour de l'année (`toy`). En ce qui concerne le jour de la semaine, nous avons travaillé avec 7 facteurs (`WeekDays3`), dans les premiers modèles, avant de n'utiliser que `WeekDays3` qui regroupe les jours de la semaine avec un comportement de demande très similaire (mardi, mercredi et jeudi, noté `WorkDay`).
+La Figure \@ref(fig:var-selection1) résume l'analyse exploratoire de quelques variables clés pour la prédiction de la demande nette : la charge du réseau du jour précédent (`Load.1`) semble être très fortement corrélée à la demande, mais être aussi dépendante du jour de la semaine (`WeekDays3`). La température (panel droit) semble avoir plutôt une relation polynomiale à la demande nette, selon le jour de l'année (`toy`). En ce qui concerne le jour de la semaine, nous avons travaillé avec 7 facteurs (`WeekDays`), dans les premiers modèles, avant de n'utiliser que `WeekDays3` qui regroupe les jours de la semaine avec un comportement de demande très similaire (mardi, mercredi et jeudi, noté `WorkDay`).
 
 ```{r var-selection1, opts.label="fullwidth", fig.cap="Relation between the net demand and some well selected variables. WeekDays3 denotes the grouping of Tues, Wed and Thur as WorkDay. In Day of the Year, 0 is Jan 1st, 365 Dec 31st."}
 ggarrange(
@@ -157,9 +157,9 @@ Si le modèle est performant :
 
 5.  Répéter 3 et 4 sur les prédictions de la validation croisée
 
-6.  Ajouter le quantile 0.95 sur les résidus du modèle test
+6.  Ajouter le quantile 0.95 calculé sur les résidus aux prédictions du test
 
-7.  Soumission Kaggle (si le modèle était jugé suffisament performant)
+7.  Soumission Kaggle si le modèle était jugé suffisament performant
 
 ### Importance du jour de la semaine et de la température
 
@@ -175,6 +175,7 @@ res <- Data0[sel_a,]$Net_demand - mod1$fitted.values
 quant <- qnorm(0.95, mean = mean(res), sd = sd(res))
 mod1.forecast <- mod1.forecast + quant
 ```
+Ce type de premiers modèles produit une pinball loss autour de 400 (tableau \@ref(tab:linear-table)) et n'a donc pas été soumis sur Kaggle.
 
 ### Prendre en compte la saisonnalité
 
@@ -207,12 +208,11 @@ mod1 <- lm(
   )
 ```
 Avec $\sin_i = \sin(\omega t i)$, $\omega = \frac {2 \pi} {365}$ et $t$ la date numérique au format numérique. Pour choisir $i$, on minimise l'erreur de prédiction (RMSE) de modèles emboités comportant de plus en plus de cycles : 
-$$i = \mathrm{argmin}_{i \in \{1 \dots 50\}} \mathrm{RMSE(lm(}\cos_1 + \dots + \cos_i + \sin_1 + \dots + \sin_i))$$
+$$i = \mathrm{argmin}_{j \in \{1 \dots 50\}} \mathrm{RMSE(lm(}\cos_1 + \dots + \cos_j + \sin_1 + \dots + \sin_j))$$
 
 ### Régression quantile
 
-Dans ce data challenge, nous nous intéressons à la prédiction du quantile 0.95, il est donc intéressant de comparer la performance entre les modèles précédents et une prédiction plus directe des quantiles.
-
+Dans ce data challenge, nous cherchons à prédire le quantile 0.95, il est donc intéressant de comparer la performance entre les modèles précédents et une prédiction plus directe des quantiles :
 ```{r quantile-reg, eval = FALSE}
 mod.rq <- rq(Net_demand ~ WeekDays + Temp + Temp_trunc1 + Temp_trunc2 + stringency_index,
               data = train_data,
@@ -222,7 +222,6 @@ mod.rq <- rq(Net_demand ~ WeekDays + Temp + Temp_trunc1 + Temp_trunc2 + stringen
 ### Résultats des modèles linéaires
 
 Les performances des modèles sont résumées dans le tableau \@ref(tab:linear-table). Tous les modèles linéaires de cette section ont été entrainé sur `Data0`.
-
 ```{r linear-table, echo=FALSE}
 lm_results <- data.frame(
   Model = c("Linear", "Cyclic", "Quantile"),
@@ -231,6 +230,8 @@ lm_results <- data.frame(
 )
 knitr::kable(lm_results, caption = "Results of the linear models", col.names = c("Model", "RMSE (Validation)", "Pinball loss (Validation)"), align = c("l", "r", "r"))
 ```
+
+Ainsi la prise en compte des saisonnalités est importante pour améliorer les performances du modèle, et un travail sur les quantiles indispensables pour faire baisser la pinball loss. De ce point de vue-là, nous n'avons pas pu descendre en dessous de 300 sur le jeu de validation en utilisant uniquement des modèles linéaires. Etant donné la performance des GAM décris ci-dessous, aucun des trois types de modèles linéaires n'a été soumis sur Kaggle.
 
 ## GAM
 
@@ -296,20 +297,56 @@ int_gam_res <- data.frame(
   GCV = c(1314.424, 1287.628),
   Deviance = c(2570086066, 2449799066)
 )
-knitr::kable(int_gam_res, caption = "Comparing GAM models with and without interaction for the weighted wind. Equation are defined in the attached R code snippet in the text.", col.names = c("Equation", "GCV score", "Residual Deviance"), align = c("l", "r", "r"))
+knitr::kable(int_gam_res, caption = "Comparing GAM models with and without interaction for the weighted wind. Equation are defined in the attached R code snippet in the text.", col.names = c("Equation", "sqrt(GCV) score", "Residual Deviance"), align = c("l", "r", "r"))
 ```
 
 ### Ajustement des résidus pour la prédiction du quantile $0.95$
 
 De la même façon que pour les modèles linéaires, le quantile 0.95 des résidus du modèle est ajouté à la prédiction. Pour autant, certains modèles (dont celui de la sous-section suivante) ont des scores plus faibles sur le jeu de données privé du Kaggle sans cette correction.
 
-Ensuite, au lieu de modéliser le quantile $0.95$ par :
+A noter si la distribution des résidus semble normal, ainsi que montré sur la figure \@ref(fig:res-gam), on observe également les valeurs extrêmes s'écartant significativement d'une distribution théorique. Or il s'agit ici de prédire le quantile 0.95. Un travail supplémentaire sur les résidus est donc pertinent.
+
+```{r res-gam, opts.label="fullwidth", fig.cap="Residual distribution of a typical GAM used in the project."}
+
+equation <- Net_demand ~ s(Time, k = 3, bs = 'cr') +
+  s(toy, k = 30, bs = 'cc') + 
+  s(Temp, k = 10, bs = 'cr') +
+  # s(Net_demand.1, bs = 'cr',  by = WeekDays) +
+  # s(Net_demand.7, bs = 'cr') +
+  s(Load.1, bs = 'cr',  by = WeekDays) +
+  s(Load.7, bs = 'cr') +
+  s(Temp_s99, k = 10, bs = 'cr') + 
+  as.factor(WeekDays) +
+  as.factor(BH) +
+  s(Wind_weighted) + 
+  te(as.numeric(Date), Nebulosity_weighted, k = c(4, 10)) +
+  s(Wind_power.1, k = 10, bs = 'cr') +
+  s(Solar_power.1, k = 10,  bs = 'cr')
+# md.gam.11 <- gam(equation, data = Data0[sel_a,])
+md.gam.11 <- gam(equation, data = train_data2)
+md.gam.11.forecast <- predict(md.gam.11, newdata = val_data2)
+res <- val_data2$Net_demand - md.gam.11.forecast
+
+ggarrange(
+  # Q-Q plot of the residuals
+ggplot(data.frame(res = res), aes(sample = res)) +
+  stat_qq() +
+  stat_qq_line(),
+# Histogram of the residuals
+ggplot(data.frame(res = res), aes(x = res)) + 
+  geom_histogram(binwidth = 200) +
+  labs(x = "Residual"),
+ncol = 2
+)
+```
+
+Pour essayer de comprendre ce phénomène, au lieu de modéliser le quantile $0.95$ par :
 ```{r eval = FALSE}
 m <- mean(gam$residuals),
 s <- sd(gam$residuals)
 quant <- qnorm(0.95, mean = m, sd = s)
 ```
-nous avons également utilisé une regréssion quantile linéaire sur les résidus :
+nous avons également utilisé une régression quantile linéaire sur les résidus :
 ```{r eval = FALSE}
 mod.rq <- rq(
   residuals ~ Date + toy + Temp +
@@ -321,11 +358,37 @@ mod.rq <- rq(
 )
 quantnew <- predict(mod.rq, newdata = quantile_newdata)
 ```
-Cependant, avec l'inclusion de certaines variables, la matrice de design peut devenir singulière. Dans cet esprit, nous avons donc également testé une modélisation directe du quantile 0.95 à l'aide de modèle GAM-quantile. 
+Cependant, avec l'inclusion de certaines variables, la matrice de design peut devenir singulière. Il n'est pas possible de construire de cette manière-là le meilleur modèle GAM trouvé et de comparer sa performance sans correction des résidus et une correction par régression quantile. 
+
+Dans cet esprit, nous avons donc testé une modélisation directe du quantile 0.95 à l'aide de modèle GAM-quantile (package `qgam`) en reprenant les équations identiques aux modèles GAM classiques. 
 
 ### Résultats des GAM
 
-Pour conclure sur cette section, nous rapportons ici les résultats du meilleur modèle GAM obtenu lors du data challenge :
+Avant de montrer le meilleur modèle, montrons l'intérêt des diverses investigations sur les résidus. En reprenant l'équation suivante :
+```{r}
+Net_demand ~ WeekDays + 
+  s(Temp, k = 10, bs = "cr") +
+  s(toy, k = 30, bs = "cc") + 
+  s(Load.1, bs = 'cr', k = 15) + 
+  s(Load.7, bs = 'cr') +
+  s(Wind_weighted, k = 10, bs = "cr") +
+  te(as.numeric(Date), Nebulosity_weighted, k = c(4, 15)) +
+  s(Temp_s99, k = 10, bs = 'cr') +
+  s(Solar_power.1, bs = 'cr', k = 5) +
+  s(Wind_power.1, bs = 'cr', k = 5)
+```
+Il vient les résultats du tableau \@ref(tab:gam-table), montrant la performance des GAM sans correction de quantile pour les soumissions Kaggle^[Ces résultats sont ici de re-soumission tardive pour s'assurer d'avoir des modèles comparables avec des équations strictement identiques et entraînement sur la même version du jeu de données (voir discussion sur le [Choix des données d\'entraînement]). Il peut donc y avoir des différences de scores.]. 
+```{r gam-table, echo=FALSE}
+gam_results <- data.frame(
+  Model = c("GAM no quant","GAM qnorm", "GAM rq", "Q-GAM"),
+  GCV = c(1055.3, 1055.3, 1055.3, 103),
+  Pinball_loss = c(442, 132, 107, 105),
+  Kaggle = c(139, 559, 184, 204)
+)
+knitr::kable(gam_results, caption = "Results of some representative GAM models. The same equation is used for the 4 models (see main text)", col.names = c("Model", "sqrt(GCV)", "Pinball loss (Validation)", "Kaggle (private set)"), align = c("l", "r", "r", "r"))
+```
+
+Pour conclure sur cette section, nous rapportons ici le meilleur modèle GAM obtenu lors du data challenge (score de 122 sur le jeu de données privé sur Kaggle) :
 ```{r}
 equation <- Net_demand ~ s(Time, k = 3, bs = 'cr') +
   s(toy, k = 30, bs = 'cc') +
@@ -342,5 +405,7 @@ equation <- Net_demand ~ s(Time, k = 3, bs = 'cr') +
 ```
 
 ## Aggrégation d'experts
+
+Notre dernière démarche, à la suite de ce travail sur les GAM, a été de chercher à agréger les prédictions de divers experts : GAM, modèles quantiles et boosting.
 
 # Discussion

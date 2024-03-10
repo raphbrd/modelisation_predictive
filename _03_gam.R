@@ -2,7 +2,7 @@
 #' 
 #' 
 
-## First models ####
+## Example of some of the first models ####
 
 equation <- Net_demand ~ WeekDays + 
   s(Temp, k = 10, bs="cr") + 
@@ -54,29 +54,76 @@ pinball_loss(
 equation <- Net_demand ~ s(Time, k = 3, bs = 'cr') +
   s(toy, k = 30, bs = 'cc') + 
   s(Temp, k = 10, bs = 'cr') +
-  s(Net_demand.1, bs = 'cr',  by = WeekDays) +
-  s(Net_demand.7, bs = 'cr') +
+  # s(Net_demand.1, bs = 'cr',  by = WeekDays) +
+  # s(Net_demand.7, bs = 'cr') +
   s(Load.1, bs = 'cr',  by = WeekDays) +
   s(Load.7, bs = 'cr') +
   s(Temp_s99, k = 10, bs = 'cr') + 
-  WeekDays +
-  BH +
+  as.factor(WeekDays) +
+  as.factor(BH) +
   s(Wind_weighted) + 
   te(as.numeric(Date), Nebulosity_weighted, k = c(4, 10)) +
   s(Wind_power.1, k = 10, bs = 'cr') +
   s(Solar_power.1, k = 10,  bs = 'cr')
-md.gam.11 <- gam(equation, data = Data0[sel_a,])
+# md.gam.11 <- gam(equation, data = Data0[sel_a,])
+md.gam.11 <- gam(equation, data = train_data2)
 summary(md.gam.11)
+# md.gam.11.forecast <- predict(md.gam.11, newdata = Data0[sel_b,])
+md.gam.11.forecast <- predict(md.gam.11, newdata = val_data2)
+res <- Data0[sel_b, "Net_demand"] - md.gam.11.forecast
+block_list_D0 <- get_cv_blocks(nrow(Data0))
+md.gam.1.cvpred <- lapply(block_list_D0, fitmod.gam, eq = equation) %>% unlist
+rmse(y = Data0$Net_demand, ychap = md.gam.1.cvpred) # 1513
+res <- Data0$Net_demand - md.gam.1.cvpred
+md.gam.11$gcv.ubre%>%sqrt # 1055.3
+
+res <- val_data2$Net_demand - md.gam.11.forecast
+quant <- qnorm(0.95, mean = mean(res, na.rm = TRUE), sd = sd(res, na.rm = TRUE))
+
+pinball_loss(
+  y = val_data2$Net_demand,
+  md.gam.11.forecast + quant,
+  quant = 0.95,
+  output.vect = FALSE
+) # 132
+
+pinball_loss(
+  y = val_data2$Net_demand,
+  md.gam.11.forecast,
+  quant = 0.95,
+  output.vect = FALSE
+) # 442 without the VC
 
 # soumission
 md.gam.11 <- gam(equation, data = Data0_clean)
 gam.forecast <- predict(md.gam.11, newdata = Data1)
+block_list_D0 <- get_cv_blocks(nrow(Data0_clean))
 md.gam.11.cvpred <- lapply(block_list_D0, fitmod.gam, eq = equation) %>% unlist
-res <- Data0_clean$Net_demand - md.gam.1.cvpred
-quant <- qnorm(0.95, mean = mean(res, na.rm=TRUE), sd = sd(res, na.rm=TRUE))
+res <- Data0_clean$Net_demand - md.gam.11.cvpred
+quant <- qnorm(0.95,
+               mean = mean(res, na.rm = TRUE),
+               sd = sd(res, na.rm = TRUE))
+hist(res)
 submit <- read_delim( file="data/sample_submission.csv", delim=",")
-submit$Net_demand <- gam.forecast+quant
-write.table(submit, file="data/submission_gam_14022024.csv", quote=F, sep=",", dec='.',row.names = F)
+submit$Net_demand <- gam.forecast + quant
+write.table(
+  submit,
+  file = "data/submission_gam_report_gam_quant.csv",
+  quote = F,
+  sep = ",",
+  dec = '.',
+  row.names = F
+) # 559
+
+submit$Net_demand <- gam.forecast
+write.table(
+  submit,
+  file = "data/submission_gam_report_gam_without_quant.csv",
+  quote = F,
+  sep = ",",
+  dec = '.',
+  row.names = F
+) # 139 on the private
 
 ## Interaction analysis ####
 # is the interaction Nebulosity_weighted x significant ? 
@@ -241,7 +288,7 @@ pinball_loss(
 ) # 133.8
 
 # Soumission
-gam1 <- gam(equation1, data = Data0_clean)
+gam1 <- gam(equation, data = Data0_clean)
 
 quantile_data <- data.frame(
   residuals = gam1$residuals,
@@ -283,7 +330,7 @@ submit <- read_delim( file="data/sample_submission.csv", delim=",")
 submit$Net_demand <- gam1.forecast + quantnew
 write.table(
   submit,
-  file = "data/submission_gam_rq_02032024.csv",
+  file = "data/submission_gam_rq_report_1.csv",
   quote = F,
   sep = ",",
   dec = '.',
@@ -296,8 +343,8 @@ equation <- Net_demand ~ s(as.numeric(Date), k = 3, bs = 'cr') +
   s(toy, k = 30, bs = 'cc') +
   s(Temp_s99, k = 10, bs = "cr") +
   WeekDays +
-  s(Net_demand.1, bs = 'cr',  by = as.factor(WeekDays)) +
-  s(Net_demand.7, bs = 'cr') + 
+  # s(Net_demand.1, bs = 'cr',  by = as.factor(WeekDays)) +
+  # s(Net_demand.7, bs = 'cr') + 
   s(Load.1, bs = 'cr',  by = as.factor(WeekDays)) +
   s(Load.7, bs = 'cr') +
   s(Wind_weighted) + 
@@ -342,7 +389,7 @@ submit <- read_delim( file="data/sample_submission.csv", delim=",")
 submit$Net_demand <- gqam.forecast
 write.table(
   submit,
-  file = "data/submission_gqgam_03032024.csv",
+  file = "data/submission_gqgam_late_sub_report.csv",
   quote = F,
   sep = ",",
   dec = '.',
